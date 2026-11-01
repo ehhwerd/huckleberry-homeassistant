@@ -4,7 +4,7 @@
 // custom:baby-chips-card (one-tap chips for an input_select).
 // Data: huckleberry.list_entries (fork ehhwerd/huckleberry-homeassistant). Glass look per bubble-card-design.md.
 (() => {
-  const V = 'v1';
+  const V = 'v2';
   const DEV = 'bdf819090a6a92dc84381c2f6f0f7b5c';
   const CHILD = 'Florence';
   const C = {
@@ -246,7 +246,7 @@ button:active,.tap:active{transform:scale(.96)}
 .blk.live{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.25) 0 6px,transparent 6px 12px)!important}
 .blk .sc{position:absolute;right:4px;top:3px;padding:0 6px;border-radius:10px;background:rgba(11,14,20,.75);color:#fff;font-size:11px;line-height:16px}
 .blk .who{position:absolute;right:4px;bottom:3px;width:16px;height:16px;border-radius:50%;background:rgba(11,14,20,.6);color:#fff;font-size:10px;line-height:16px;text-align:center}
-.cry{position:absolute;left:0;right:0;height:2px;background:${C.cry};opacity:.95;pointer-events:none}
+.cry{position:absolute;left:0;width:9px;height:3px;border-radius:0 2px 2px 0;background:${C.cry};pointer-events:none}
 .snoo{position:absolute;width:4px;border-radius:2px;background:${C.snoo};opacity:.85;pointer-events:none}
 .mk{position:absolute;height:24px;border-radius:12px;display:flex;align-items:center;gap:3px;padding:0 7px 0 4px;font-size:11px;font-weight:700;color:#0b0e14;cursor:pointer;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 2px 6px rgba(0,0,0,.25);transform:translateY(-50%);border:1px solid rgba(255,255,255,.2)}
 .mk ha-icon{--mdc-icon-size:15px}
@@ -333,7 +333,9 @@ button:active{transform:scale(.96)}</style><div class="t"><span id="m"></span><b
 .slide.busy{opacity:.6;pointer-events:none}
 .info{font-size:12px;color:rgba(255,255,255,.6);text-align:center;margin-top:8px}
 </style><div class="bg"></div><div class="sh no-swipe"></div>`;
-      this.shadowRoot.querySelector('.bg').addEventListener('click', () => this.close());
+      const bg = this.shadowRoot.querySelector('.bg');
+      bg.addEventListener('pointerdown', () => (this._bgDown = Date.now()));
+      bg.addEventListener('click', () => { if (Date.now() - (this._bgDown || 0) < 800) this.close(); });
       this._onLoc = () => { if (this.style.display === 'block' && location.hash !== '#baby-entry') this.close(true); };
       window.addEventListener('location-changed', this._onLoc);
       window.addEventListener('popstate', this._onLoc);
@@ -390,7 +392,8 @@ ${e.live ? '' : '<div class="slide" id="sl"><div class="fill"></div><div class="
       const knob = el.querySelector('.knob'), fill = el.querySelector('.fill'), lb = el.querySelector('.lb');
       let x0 = null, w = 0, done = false;
       const set = (dx) => { const p = Math.max(0, Math.min(dx, w - 50)); knob.style.left = 3 + p + 'px'; fill.style.width = 52 + p + 'px'; return p / (w - 50); };
-      const down = (ev) => { if (done) return; x0 = (ev.touches ? ev.touches[0] : ev).clientX; w = el.clientWidth; knob.style.transition = fill.style.transition = 'none'; };
+      el.addEventListener('dragstart', (ev) => ev.preventDefault());
+      const down = (ev) => { if (done) return; if (ev.pointerType === 'mouse') { ev.preventDefault(); try { el.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ } } x0 = (ev.touches ? ev.touches[0] : ev).clientX; w = el.clientWidth; knob.style.transition = fill.style.transition = 'none'; };
       const move = (ev) => { if (x0 == null) return; const f = set((ev.touches ? ev.touches[0] : ev).clientX - x0); if (ev.cancelable) ev.preventDefault(); if (f >= 0.7 && !done) { done = true; x0 = null; set(w); el.classList.add('busy'); lb.textContent = 'Deleting…'; navigator.vibrate && navigator.vibrate(30); this.del(); } };
       const up = () => { if (x0 == null) return; x0 = null; knob.style.transition = fill.style.transition = 'all .2s'; set(0); if (!done) { lb.textContent = 'Slide right to delete →'; } };
       el.addEventListener('pointerdown', down); el.addEventListener('touchstart', down, { passive: true });
@@ -504,7 +507,7 @@ ${e.live ? '' : '<div class="slide" id="sl"><div class="fill"></div><div class="
 
   // ------------------------------------------------------------ timeline card
   class BabyTimelineCard extends HTMLElement {
-    setConfig(c) { this._c = Object.assign({ hour_px: 30 }, c || {}); this._view = this._c.view || 'day'; this._day = sod(new Date()); this._week = sod(new Date()); this._sumDays = 7; }
+    setConfig(c) { this._c = Object.assign({ hour_px: 32 }, c || {}); this._view = this._c.view || 'day'; this._day = sod(new Date()); this._week = sod(new Date()); this._sumDays = 7; }
     getCardSize() { return 12; }
     getGridOptions() { return { columns: 12 }; }
     connectedCallback() {

@@ -182,6 +182,7 @@ def _record(hass, tracker: str, doc, key: str | None, entry: dict) -> dict[str, 
         "duration": dur,
         "end": datetime.fromtimestamp(start + dur, tz).isoformat() if dur else None,
         "multi": key is not None,
+        "logged_at": _num(entry.get("lastUpdated")),
     }
     rec.update(_summary(kind, entry))
     return rec

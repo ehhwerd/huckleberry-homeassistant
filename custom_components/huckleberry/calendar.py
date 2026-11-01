@@ -1,6 +1,7 @@
 """Calendar platform for Huckleberry integration."""
 from __future__ import annotations
 
+import dataclasses
 import logging
 from datetime import datetime
 
@@ -11,6 +12,17 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from huckleberry_api import HuckleberryAPI
+from huckleberry_api.firebase_types import (
+    FirebaseActivityIntervalData,
+    FirebaseDiaperData,
+    FirebaseFeedIntervalData,
+    FirebasePumpIntervalData,
+    FirebaseSleepIntervalData,
+    HealthDataEntry,
+)
+from pydantic import TypeAdapter
+
+from . import history
 
 from . import HuckleberryDataUpdateCoordinator, HuckleberryEntryData
 from .const import DOMAIN
@@ -26,6 +38,41 @@ from .features.calendar_events import (
 from .models import HuckleberryChildProfile
 
 _LOGGER = logging.getLogger(__name__)
+
+_FEED = TypeAdapter(FirebaseFeedIntervalData)
+_HEALTH = TypeAdapter(HealthDataEntry)
+
+
+def _feed_builder(models):
+    feed_events, bottle_events = build_feed_events(models)
+    return [*feed_events, *bottle_events]
+
+
+# Fork: events carry uid = Firestore doc id ("doc/key" for batched rows).
+_UID_TRACKERS = {
+    "sleep": (FirebaseSleepIntervalData.model_validate, build_sleep_events),
+    "feed": (_FEED.validate_python, _feed_builder),
+    "diaper": (FirebaseDiaperData.model_validate, build_diaper_events),
+    "health": (_HEALTH.validate_python, build_health_events),
+    "pump": (FirebasePumpIntervalData.model_validate, build_pump_events),
+    "activities": (FirebaseActivityIntervalData.model_validate, build_activity_events),
+}
+
+
+async def _events_with_uid(api, child_uid, tracker, start_date, end_date) -> list[CalendarEvent]:
+    validate, build = _UID_TRACKERS[tracker]
+    out: list[CalendarEvent] = []
+    for entry_id, raw in await history.async_list_raw(api, child_uid, tracker, start_date, end_date):
+        raw = dict(raw)
+        start = history._start_s(raw)  # noqa: SLF001
+        if start is not None:
+            raw["start"] = start
+        try:
+            model = validate(raw)
+        except Exception:  # noqa: BLE001
+            continue
+        out.extend(dataclasses.replace(ev, uid=entry_id) for ev in build([model]))
+    return out
 
 
 async def async_setup_entry(
@@ -87,57 +134,34 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
 
         events: list[CalendarEvent] = []
 
-        try:
-            sleep_intervals = await self._api.list_sleep_intervals(
-                self.child_uid, start_date, end_date
-            )
-            events.extend(build_sleep_events(sleep_intervals))
-        except Exception as err:
-            _LOGGER.error("Error fetching sleep events: %s", err)
-
-        try:
-            feed_intervals = await self._api.list_feed_intervals(
-                self.child_uid, start_date, end_date
-            )
-            feed_events, bottle_events = build_feed_events(feed_intervals)
-            events.extend(feed_events)
-            events.extend(bottle_events)
-        except Exception as err:
-            _LOGGER.error("Error fetching feed events: %s", err)
-
-        try:
-            diaper_intervals = await self._api.list_diaper_intervals(
-                self.child_uid, start_date, end_date
-            )
-            events.extend(build_diaper_events(diaper_intervals))
-        except Exception as err:
-            _LOGGER.error("Error fetching diaper events: %s", err)
-
-        try:
-            health_entries = await self._api.list_health_entries(
-                self.child_uid, start_date, end_date
-            )
-            events.extend(build_health_events(health_entries))
-        except Exception as err:
-            _LOGGER.error("Error fetching health events: %s", err)
-
-        try:
-            pump_intervals = await self._api.list_pump_intervals(
-                self.child_uid, start_date, end_date
-            )
-            events.extend(build_pump_events(pump_intervals))
-        except Exception as err:
-            _LOGGER.error("Error fetching pump events: %s", err)
-
-        try:
-            activity_intervals = await self._api.list_activity_intervals(
-                self.child_uid, start_date, end_date
-            )
-            events.extend(build_activity_events(activity_intervals))
-        except Exception as err:
-            _LOGGER.error("Error fetching activity events: %s", err)
+        for tracker in _UID_TRACKERS:
+            try:
+                events.extend(await _events_with_uid(self._api, self.child_uid, tracker, start_date, end_date))
+                continue
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.debug("Calendar uid path failed for %s, using library list: %s", tracker, err)
+            events.extend(await self._legacy_events(tracker, start_date, end_date))
 
         events.sort(key=lambda e: e.start)
         self._events = events
         _LOGGER.debug("Found %d events for %s", len(events), self.child_name)
         return events
+
+    async def _legacy_events(self, tracker: str, start_date: datetime, end_date: datetime) -> list[CalendarEvent]:
+        """Upstream path (no uid), used only if the fork's raw listing fails."""
+        uid = self.child_uid
+        try:
+            if tracker == "sleep":
+                return build_sleep_events(await self._api.list_sleep_intervals(uid, start_date, end_date))
+            if tracker == "feed":
+                return _feed_builder(await self._api.list_feed_intervals(uid, start_date, end_date))
+            if tracker == "diaper":
+                return build_diaper_events(await self._api.list_diaper_intervals(uid, start_date, end_date))
+            if tracker == "health":
+                return build_health_events(await self._api.list_health_entries(uid, start_date, end_date))
+            if tracker == "pump":
+                return build_pump_events(await self._api.list_pump_intervals(uid, start_date, end_date))
+            return build_activity_events(await self._api.list_activity_intervals(uid, start_date, end_date))
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.error("Error fetching %s events: %s", tracker, err)
+            return []

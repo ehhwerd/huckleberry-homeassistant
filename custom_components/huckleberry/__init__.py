@@ -20,6 +20,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
+from . import compat  # noqa: F401  (fork: isNight fix, must run before models are used)
 from huckleberry_api import HuckleberryAPI
 from huckleberry_api.firebase_types import (
     ActivityMode,
@@ -194,6 +195,14 @@ def _local_datetime_value(value: object) -> datetime | None:
     if not isinstance(value, datetime):
         return None
     return dt_util.as_local(value)
+
+
+def _call_time(call: ServiceCall) -> datetime:
+    """Service start_time in local time, or now (fork: backdated nappies)."""
+    value = _local_datetime_value(call.data.get("start_time"))
+    if value is None or value > dt_util.now():
+        return dt_util.now()
+    return value
 
 
 def _utc_datetime(value: datetime) -> datetime:
@@ -427,6 +436,7 @@ def _build_service_method_schema(
         schema[vol.Optional("units", default="ml")] = vol.In(("ml", "oz"))
         schema[vol.Optional("notes")] = cv.string
     if include_diaper_fields:
+        schema[vol.Optional("start_time")] = cv.datetime
         schema[vol.Optional("pee_amount")] = vol.In(("little", "medium", "big"))
         schema[vol.Optional("poo_amount")] = vol.In(("little", "medium", "big"))
         schema[vol.Optional("color")] = vol.In(POO_COLOR_OPTIONS)
@@ -683,7 +693,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_diaper_pee(call: ServiceCall) -> None:
         await api_client.log_diaper(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_call_time(call),
             mode="pee",
             pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
             diaper_rash=bool(call.data.get("diaper_rash", False)),
@@ -693,7 +703,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_diaper_poo(call: ServiceCall) -> None:
         await api_client.log_diaper(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_call_time(call),
             mode="poo",
             poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
             color=_poo_color_value(call.data.get("color")),
@@ -705,7 +715,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_diaper_both(call: ServiceCall) -> None:
         await api_client.log_diaper(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_call_time(call),
             mode="both",
             pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
             poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
@@ -718,7 +728,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_diaper_dry(call: ServiceCall) -> None:
         await api_client.log_diaper(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_call_time(call),
             mode="dry",
             diaper_rash=bool(call.data.get("diaper_rash", False)),
             notes=_string_value(call.data.get("notes")),
@@ -911,6 +921,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         handle_log_solids,
         schema=_build_service_method_schema(include_solids=True),
     )
+
+    from . import services_ext  # fork: medicine + history services
+
+    services_ext.async_register(hass, entry, api_client, coordinator, _get_child_uid_from_call, _string_value)
 
     return True
 

@@ -1,11 +1,15 @@
 {
   "domain": "huckleberry",
   "name": "Huckleberry",
-  "codeowners": ["@Woyken"],
+  "codeowners": [
+    "@Woyken"
+  ],
   "config_flow": true,
-  "documentation": "https://github.com/Woyken/huckleberry-homeassistant",
+  "documentation": "https://github.com/ehhwerd/huckleberry-homeassistant",
   "iot_class": "cloud_push",
-  "issue_tracker": "https://github.com/Woyken/huckleberry-homeassistant/issues",
-  "requirements": ["huckleberry-api==0.4.11"],
-  "version": "0.5.9"
+  "issue_tracker": "https://github.com/ehhwerd/huckleberry-homeassistant/issues",
+  "requirements": [
+    "huckleberry-api==0.4.11"
+  ],
+  "version": "0.5.9.1"
 }

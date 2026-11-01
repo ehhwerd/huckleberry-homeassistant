@@ -233,6 +233,12 @@ log_diaper_pee:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Start time
+      description: When the nappy change happened. Defaults to now.
+      required: false
+      selector:
+        datetime:
     pee_amount:
       name: Pee amount
       description: Amount of pee (shows indicator in app)
@@ -269,6 +275,12 @@ log_diaper_poo:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Start time
+      description: When the nappy change happened. Defaults to now.
+      required: false
+      selector:
+        datetime:
     poo_amount:
       name: Poo amount
       description: Amount of poo (shows indicator in app)
@@ -334,6 +346,12 @@ log_diaper_both:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Start time
+      description: When the nappy change happened. Defaults to now.
+      required: false
+      selector:
+        datetime:
     pee_amount:
       name: Pee amount
       description: Amount of pee (shows indicator in app)
@@ -410,6 +428,12 @@ log_diaper_dry:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Start time
+      description: When the nappy change happened. Defaults to now.
+      required: false
+      selector:
+        datetime:
     diaper_rash:
       name: Diaper rash
       description: Baby has diaper rash
@@ -887,3 +911,211 @@ log_pump:
           options:
             - ml
             - oz
+log_medicine:
+  name: Log medicine
+  description: Log a dose of a medicine set up in the Huckleberry app (fork).
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    medicine:
+      name: Medicine
+      description: Medicine name as in the app.
+      required: true
+      selector:
+        text:
+    amount:
+      name: Amount
+      description: Dose amount.
+      required: false
+      selector:
+        number:
+    units:
+      name: Units
+      description: ml, oz, tsp or drops.
+      required: false
+      selector:
+        text:
+    start_time:
+      name: Start time
+      description: When it was given. Defaults to now.
+      required: false
+      selector:
+        datetime:
+    notes:
+      name: Notes
+      description: Notes.
+      required: false
+      selector:
+        text:
+list_medicine_types:
+  name: List medicine types
+  description: Medicines set up in the Huckleberry app (fork).
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+list_entries:
+  name: List entries
+  description: History entries (sleep, feeds, nappies, health, pump, activities) with ids for editing (fork).
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    start:
+      name: Start
+      description: Range start.
+      required: true
+      selector:
+        datetime:
+    end:
+      name: End
+      description: Range end.
+      required: true
+      selector:
+        datetime:
+    trackers:
+      name: Trackers
+      description: Optional list of trackers.
+      required: false
+      selector:
+        object:
+update_entry:
+  name: Update entry
+  description: Edit a past entry; repairs the app's latest-entry cache and saves a JSON backup first (fork).
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    tracker:
+      name: Tracker
+      description: sleep, feed, diaper, health, pump or activities (from list_entries).
+      required: true
+      selector:
+        text:
+    id:
+      name: Id
+      description: Entry id from list_entries.
+      required: true
+      selector:
+        text:
+    revision:
+      name: Revision
+      description: Revision from list_entries; the change is refused if the entry changed since.
+      required: false
+      selector:
+        text:
+    start_time:
+      name: Start time
+      description: New start.
+      required: false
+      selector:
+        datetime:
+    end_time:
+      name: End time
+      description: New end (sleep, nursing, pump, activity).
+      required: false
+      selector:
+        datetime:
+    notes:
+      name: Notes
+      description: Notes.
+      required: false
+      selector:
+        text:
+delete_entry:
+  name: Delete entry
+  description: Delete a past entry; saves a JSON backup first for restore_entry (fork).
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    tracker:
+      name: Tracker
+      description: sleep, feed, diaper, health, pump or activities (from list_entries).
+      required: true
+      selector:
+        text:
+    id:
+      name: Id
+      description: Entry id from list_entries.
+      required: true
+      selector:
+        text:
+    revision:
+      name: Revision
+      description: Revision from list_entries; the change is refused if the entry changed since.
+      required: false
+      selector:
+        text:
+restore_entry:
+  name: Restore entry
+  description: Undo an edit or delete from its backup file name (fork).
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    backup:
+      name: Backup
+      description: Backup file name returned by update_entry / delete_entry.
+      required: true
+      selector:
+        text:
+merge_sleeps:
+  name: Merge sleeps
+  description: Join two sleeps into one (fork).
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    first_id:
+      name: First id
+      description: Sleep to keep.
+      required: true
+      selector:
+        text:
+    second_id:
+      name: Second id
+      description: Sleep to fold in.
+      required: true
+      selector:
+        text:
+repair_prefs:
+  name: Repair latest entries
+  description: Rebuild the app's latest sleep/feed/nappy cache from history (fork).
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry

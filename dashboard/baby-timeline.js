@@ -706,24 +706,6 @@ ${e.live ? '' : '<div class="slide" id="sl"><div class="fill"></div><div class="
         if (i < 0) { i = levels.length; levels.push([]); }
         levels[i].push([t0, t1]); level.set(e, i);
       }
-      const indent = Math.min(mainW - 96, Math.max(172, Math.round(mainW / 2)));
-      const x = this._extra;
-      for (const e of spans) {
-        const top = y(e.ts), ht = Math.max(18, y(e.ts + e.duration) - top);
-        const lv = level.get(e), off = lv ? Math.min(mainW - 96, indent + (lv - 1) * 24) : 0;
-        const w = mainW - off, left = axis + 2 + off;
-        const sc = x && base(e.kind) === 'sleep' ? (x.scores || []).find((q) => Math.abs(q.s - e.ts) < 900) : null;
-        const who = extra.whoFor(e, x);
-        let inner = ht >= 18 ? esc(shortLabel(e)) : '';
-        if (sc && sc.score != null && ht >= 40 && w > 110) inner += `<span class="sc">${sc.score}</span>`;
-        if (who && ht >= 40) inner += `<span class="who">${esc(who[0])}</span>`;
-        if (sc) for (const c of sc.cries) { if (c[0] >= e.ts && c[0] <= e.ts + e.duration) inner += `<div class="cry" style="top:${y(c[0]) - top}px"></div>`; }
-        h += `<div class="blk ${e.live ? 'live' : ''} ${lv ? 'over' : ''}" data-id="${esc(e.id)}" style="top:${top}px;height:${ht}px;left:${left}px;width:${w}px;z-index:${lv + 1};background:${color(e)}">${inner}</div>`;
-        if (x && base(e.kind) === 'sleep') for (const r of x.runs || []) {
-          const s = Math.max(r[0], e.ts), en = Math.min(r[1], e.ts + e.duration);
-          if (en - s > 60) h += `<div class="snoo" style="top:${y(s)}px;height:${Math.max(4, y(en) - y(s))}px;left:${left - 6}px"></div>`;
-        }
-      }
       // instant markers float on the right edge, on top of the blocks; close ones sit side by side
       const pills = [];
       for (const e of points) {
@@ -734,6 +716,30 @@ ${e.live ? '' : '<div class="slide" id="sl"><div class="fill"></div><div class="
         const right = Math.min(mainW - pw - 60, near.length ? Math.max(...near.map((r) => r.right + r.pw + 5)) : 2);
         pills.push({ top, right, pw });
         h += `<div class="mk" data-id="${esc(e.id)}" style="top:${top}px;right:${right}px;background:${color(e)}"><ha-icon icon="${ICON[base(e.kind)] || 'mdi:circle'}"></ha-icon>${esc(label)}</div>`;
+      }
+      const indent = Math.min(mainW - 96, Math.max(172, Math.round(mainW / 2)));
+      const overs = spans.filter((e) => level.get(e) > 0).map(painted);
+      const x = this._extra;
+      for (const e of spans) {
+        const top = y(e.ts), ht = Math.max(18, y(e.ts + e.duration) - top);
+        const lv = level.get(e), clash = pills.filter((p) => Math.abs(p.top - (top + 9)) < 21);
+        // a block on top keeps its label clear of the pills on its row
+        const room = mainW - 84 - Math.max(0, ...clash.map((p) => p.right + p.pw));
+        const off = lv ? Math.max(60, Math.min(room, mainW - 96, indent + (lv - 1) * 24)) : 0;
+        const w = mainW - off, left = axis + 2 + off;
+        // and a block underneath moves its label below whatever sits over its top edge
+        const pad = lv ? 0 : Math.max(0, ...overs.filter(([t0, t1]) => t0 <= top + 16 && t1 > top).map(([, t1]) => t1 - top));
+        const sc = x && base(e.kind) === 'sleep' ? (x.scores || []).find((q) => Math.abs(q.s - e.ts) < 900) : null;
+        const who = extra.whoFor(e, x);
+        let inner = ht >= 18 ? esc(shortLabel(e)) : '';
+        if (sc && sc.score != null && ht >= 40 && w > 110) inner += `<span class="sc">${sc.score}</span>`;
+        if (who && ht >= 40) inner += `<span class="who">${esc(who[0])}</span>`;
+        if (sc) for (const c of sc.cries) { if (c[0] >= e.ts && c[0] <= e.ts + e.duration) inner += `<div class="cry" style="top:${y(c[0]) - top}px"></div>`; }
+        h += `<div class="blk ${e.live ? 'live' : ''} ${lv ? 'over' : ''}" data-id="${esc(e.id)}" style="top:${top}px;height:${ht}px;left:${left}px;width:${w}px;z-index:${lv + 1};${pad && ht >= pad + 20 ? `padding-top:${pad + 3}px;` : ''}background:${color(e)}">${inner}</div>`;
+        if (x && base(e.kind) === 'sleep') for (const r of x.runs || []) {
+          const s = Math.max(r[0], e.ts), en = Math.min(r[1], e.ts + e.duration);
+          if (en - s > 60) h += `<div class="snoo" style="top:${y(s)}px;height:${Math.max(4, y(en) - y(s))}px;left:${left - 6}px"></div>`;
+        }
       }
       if (this._gap) h += `<div class="gap" style="top:${y(this._gap.a)}px;height:${Math.max(18, y(this._gap.b) - y(this._gap.a))}px;width:${mainW}px">Add sleep?</div>`;
       if (isToday) h += `<div class="nowl" style="top:${y(Date.now() / 1000)}px"></div>`;

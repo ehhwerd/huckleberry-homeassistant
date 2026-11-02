@@ -653,26 +653,12 @@ ${e.live ? '' : '<div class="slide" id="sl"><div class="fill"></div><div class="
       const list = store.between(day, next).concat(isToday ? this._live() : []);
       this._shown = list;
       const st = this._stats(list, a, Math.min(b, Date.now() / 1000));
-      // plain-language line + "usual"
-      let usual = '';
-      if (isToday) {
-        const y = addD(day, -1), ya = y.getTime() / 1000;
-        if (store.have(y, day)) {
-          const ys = this._stats(store.between(y, day), ya, ya + (Date.now() / 1000 - a));
-          usual = ys.sleep ? (st.sleep > ys.sleep * 1.15 ? ', more than yesterday by now' : st.sleep < ys.sleep * 0.85 ? ', less than yesterday by now' : ', about the same as yesterday by now') : '';
-        }
-      } else {
-        const tot = [];
-        for (let i = 1; i <= 7; i++) { const d = addD(day, -i); if (store.have(d, addD(d, 1))) tot.push(this._stats(store.between(d, addD(d, 1)), d / 1000, addD(d, 1) / 1000).sleep); }
-        if (tot.length >= 3) { const m = tot.reduce((x, y) => x + y, 0) / tot.length; usual = st.sleep > m * 1.15 ? ', more than usual' : st.sleep < m * 0.85 ? ', less than usual' : ', about usual'; }
-      }
-      const line = `<div class="line">${isToday ? 'So far: slept' : 'Slept'} <b>${dur(st.sleep)}</b>${usual} · <b>${st.feeds}</b> feed${st.feeds === 1 ? '' : 's'} · <b>${st.nappies}</b> napp${st.nappies === 1 ? 'y' : 'ies'}</div>`;
       const nudges = isToday ? this._nudges(list) : '';
       const tot = `<div class="tot">
 <div class="tile"><div class="v"><span class="dot" style="background:${C.sleep}"></span>${dur(st.sleep)}</div><div class="k">Naps <b>${dur(st.nap)}</b><br>Night <b>${dur(st.night)}</b></div></div>
 <div class="tile"><div class="v"><span class="dot" style="background:${C.breast}"></span>${st.feeds} feeds</div><div class="k">Breast <b>${st.breast}</b> · ${dur(st.breastS)}<br>Bottle <b>${st.bottle}</b> · ${Math.round(st.ml)} ml</div></div>
 <div class="tile"><div class="v"><span class="dot" style="background:${C.diaper}"></span>${st.nappies} napp${st.nappies === 1 ? 'y' : 'ies'}</div><div class="k">Wet <b>${st.wet}</b> · Dirty <b>${st.dirty}</b>${st.meds.length ? `<br>${esc([...new Set(st.meds)].join(', '))}` : ''}</div></div></div>`;
-      return head + line + nudges + tot + this._strip(list, a, isToday);
+      return head + nudges + tot + this._strip(list, a, isToday);
     }
     _nudges(list) {
       const now = Date.now() / 1000, hr = new Date().getHours(), out = [];

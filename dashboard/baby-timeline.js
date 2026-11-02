@@ -239,20 +239,21 @@ button:active,.tap:active{transform:scale(.96)}
 .tile .k{font-size:12px;color:rgba(255,255,255,.7);margin-top:2px;line-height:1.25}
 .tile .k b{color:rgba(255,255,255,.92);font-weight:600}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:middle}
-.strip{position:relative;margin:4px 0 6px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.strip{position:relative;isolation:isolate;margin:4px 0 6px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .hr{position:absolute;left:34px;right:0;border-top:1px solid rgba(255,255,255,.07)}
 .hl{position:absolute;left:0;width:30px;text-align:right;font-size:11px;color:rgba(255,255,255,.55);transform:translateY(-50%)}
 .blk{position:absolute;border-radius:10px;overflow:hidden;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 2px 6px rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.18);color:#0b0e14;font-size:12px;font-weight:700;padding:3px 6px;line-height:1.2;white-space:nowrap;text-overflow:ellipsis}
 .blk.live{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.25) 0 6px,transparent 6px 12px)!important}
-.blk .sc{position:absolute;right:4px;top:3px;padding:0 6px;border-radius:10px;background:rgba(11,14,20,.75);color:#fff;font-size:11px;line-height:16px}
-.blk .who{position:absolute;right:4px;bottom:3px;width:16px;height:16px;border-radius:50%;background:rgba(11,14,20,.6);color:#fff;font-size:10px;line-height:16px;text-align:center}
+.blk.over{box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 0 2px rgba(11,14,20,.55),0 3px 8px rgba(0,0,0,.4)}
+.blk .sc{display:inline-block;margin-left:6px;padding:0 6px;border-radius:10px;background:rgba(11,14,20,.75);color:#fff;font-size:11px;line-height:14px;vertical-align:top}
+.blk .who{display:inline-block;margin-left:4px;width:14px;height:14px;border-radius:50%;background:rgba(11,14,20,.6);color:#fff;font-size:10px;line-height:14px;text-align:center;vertical-align:top}
 .cry{position:absolute;left:0;width:9px;height:3px;border-radius:0 2px 2px 0;background:${C.cry};pointer-events:none}
 .snoo{position:absolute;width:4px;border-radius:2px;background:${C.snoo};opacity:.85;pointer-events:none}
-.mk{position:absolute;height:24px;border-radius:12px;display:flex;align-items:center;gap:3px;padding:0 7px 0 4px;font-size:11px;font-weight:700;color:#0b0e14;cursor:pointer;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 2px 6px rgba(0,0,0,.25);transform:translateY(-50%);border:1px solid rgba(255,255,255,.2)}
+.mk{position:absolute;height:24px;border-radius:12px;display:flex;align-items:center;gap:3px;padding:0 7px 0 4px;font-size:11px;font-weight:700;color:#0b0e14;cursor:pointer;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 0 2px rgba(11,14,20,.55),0 3px 8px rgba(0,0,0,.4);transform:translateY(-50%);border:1px solid rgba(255,255,255,.2);z-index:20}
 .mk ha-icon{--mdc-icon-size:15px}
-.nowl{position:absolute;left:30px;right:0;border-top:2px solid ${C.now};pointer-events:none}
+.nowl{position:absolute;left:30px;right:0;border-top:2px solid ${C.now};pointer-events:none;z-index:21}
 .nowl:before{content:'';position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:${C.now}}
-.gap{position:absolute;left:34px;border-radius:10px;border:1.5px dashed rgba(77,208,225,.85);background:rgba(77,208,225,.12);color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.gap{position:absolute;left:34px;z-index:19;border-radius:10px;border:1.5px dashed rgba(77,208,225,.85);background:rgba(77,208,225,.12);color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none}
 .wk{display:grid;grid-template-columns:30px repeat(7,1fr);gap:3px;position:relative}
 .wk .h{font-size:11px;text-align:center;color:rgba(255,255,255,.7);padding-bottom:4px;line-height:1.2}
 .wk .h b{display:block;font-size:13px;color:#fff}
@@ -686,7 +687,7 @@ ${e.live ? '' : '<div class="slide" id="sl"><div class="fill"></div><div class="
     }
     _strip(list, a, isToday) {
       const hp = this._c.hour_px, H24 = 24 * hp, b = a + 86400;
-      const W = this.clientWidth || 360, axis = 34, mkW = Math.min(118, Math.round(W * 0.32)), laneW = W - axis - mkW - 8;
+      const W = this.clientWidth || 360, axis = 34, mainW = W - axis - 4;
       const y = (t) => ((Math.max(a, Math.min(b, t)) - a) / 3600) * hp;
       let h = `<div class="strip swipe no-swipe" data-strip="1" style="height:${H24 + 8}px">`;
       for (let i = 0; i <= 24; i++) {
@@ -695,41 +696,46 @@ ${e.live ? '' : '<div class="slide" id="sl"><div class="fill"></div><div class="
       }
       const spans = list.filter((e) => (e.duration || 0) > 0 && ['sleep', 'breast', 'activity', 'pump'].includes(base(e.kind)));
       const points = list.filter((e) => !spans.includes(e) && e.ts >= a && e.ts < b);
-      // lanes for overlapping spans
-      const lanes = []; const lane = new Map();
-      for (const e of spans) {
-        const s = e.ts, en = e.ts + e.duration; let i = lanes.findIndex((end) => end <= s);
-        if (i < 0) { i = lanes.length; lanes.push(en); } else lanes[i] = en;
-        lane.set(e, i);
+      // Everything is full width. Only a block that really collides with another (as drawn, so
+      // the 18 px minimum counts) moves right and sits on top. Longest first, so sleeps stay put.
+      const painted = (e) => { const t = y(e.ts); return [t, t + Math.max(18, y(e.ts + e.duration) - t)]; };
+      const levels = []; const level = new Map();
+      for (const e of [...spans].sort((p, q) => q.duration - p.duration)) {
+        const [t0, t1] = painted(e);
+        let i = levels.findIndex((l) => !l.some(([a0, a1]) => t0 < a1 - 2 && a0 < t1 - 2));
+        if (i < 0) { i = levels.length; levels.push([]); }
+        levels[i].push([t0, t1]); level.set(e, i);
       }
-      const nL = Math.max(1, lanes.length);
+      const indent = Math.min(mainW - 96, Math.max(172, Math.round(mainW / 2)));
       const x = this._extra;
       for (const e of spans) {
         const top = y(e.ts), ht = Math.max(18, y(e.ts + e.duration) - top);
-        const w = laneW / nL - 3, left = axis + 2 + lane.get(e) * (laneW / nL);
+        const lv = level.get(e), off = lv ? Math.min(mainW - 96, indent + (lv - 1) * 24) : 0;
+        const w = mainW - off, left = axis + 2 + off;
         const sc = x && base(e.kind) === 'sleep' ? (x.scores || []).find((q) => Math.abs(q.s - e.ts) < 900) : null;
         const who = extra.whoFor(e, x);
         let inner = ht >= 18 ? esc(shortLabel(e)) : '';
         if (sc && sc.score != null && ht >= 40 && w > 110) inner += `<span class="sc">${sc.score}</span>`;
         if (who && ht >= 40) inner += `<span class="who">${esc(who[0])}</span>`;
         if (sc) for (const c of sc.cries) { if (c[0] >= e.ts && c[0] <= e.ts + e.duration) inner += `<div class="cry" style="top:${y(c[0]) - top}px"></div>`; }
-        h += `<div class="blk ${e.live ? 'live' : ''}" data-id="${esc(e.id)}" style="top:${top}px;height:${ht}px;left:${left}px;width:${w}px;background:${color(e)}">${inner}</div>`;
+        h += `<div class="blk ${e.live ? 'live' : ''} ${lv ? 'over' : ''}" data-id="${esc(e.id)}" style="top:${top}px;height:${ht}px;left:${left}px;width:${w}px;z-index:${lv + 1};background:${color(e)}">${inner}</div>`;
         if (x && base(e.kind) === 'sleep') for (const r of x.runs || []) {
           const s = Math.max(r[0], e.ts), en = Math.min(r[1], e.ts + e.duration);
           if (en - s > 60) h += `<div class="snoo" style="top:${y(s)}px;height:${Math.max(4, y(en) - y(s))}px;left:${left - 6}px"></div>`;
         }
       }
-      // instant markers: stack sideways when close
-      const rows = [];
+      // instant markers float on the right edge, on top of the blocks; close ones sit side by side
+      const pills = [];
       for (const e of points) {
-        const top = y(e.ts); let col = 0;
-        while (rows.some((r) => r.col === col && Math.abs(r.top - top) < 25)) col++;
-        rows.push({ col, top });
-        const cw = mkW / 2 - 2, left = axis + laneW + 6 + Math.min(col, 1) * (cw + 3);
+        const top = y(e.ts);
         const label = base(e.kind) === 'bottle' ? `${Math.round(e.amount || 0)}` : base(e.kind) === 'diaper' ? shortLabel(e) : '';
-        h += `<div class="mk" data-id="${esc(e.id)}" style="top:${top}px;left:${left}px;max-width:${col > 1 ? cw - 10 : cw}px;background:${color(e)}"><ha-icon icon="${ICON[base(e.kind)] || 'mdi:circle'}"></ha-icon>${esc(label)}</div>`;
+        const pw = 32 + label.length * 7;
+        const near = pills.filter((r) => Math.abs(r.top - top) < 25);
+        const right = Math.min(mainW - pw - 60, near.length ? Math.max(...near.map((r) => r.right + r.pw + 5)) : 2);
+        pills.push({ top, right, pw });
+        h += `<div class="mk" data-id="${esc(e.id)}" style="top:${top}px;right:${right}px;background:${color(e)}"><ha-icon icon="${ICON[base(e.kind)] || 'mdi:circle'}"></ha-icon>${esc(label)}</div>`;
       }
-      if (this._gap) h += `<div class="gap" style="top:${y(this._gap.a)}px;height:${Math.max(18, y(this._gap.b) - y(this._gap.a))}px;width:${laneW}px">Add sleep?</div>`;
+      if (this._gap) h += `<div class="gap" style="top:${y(this._gap.a)}px;height:${Math.max(18, y(this._gap.b) - y(this._gap.a))}px;width:${mainW}px">Add sleep?</div>`;
       if (isToday) h += `<div class="nowl" style="top:${y(Date.now() / 1000)}px"></div>`;
       if (!list.length) h += `<div class="empty" style="position:absolute;top:${H24 / 3}px;left:34px;right:0">Nothing logged this day</div>`;
       return h + '</div>';

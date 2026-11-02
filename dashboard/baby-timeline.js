@@ -285,13 +285,13 @@ button:active,.tap:active{transform:scale(.96)}
 .blk.over{box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 0 2px rgba(11,14,20,.55),0 3px 8px rgba(0,0,0,.4)}
 .blk .sc{display:inline-block;margin-left:6px;padding:0 6px;border-radius:10px;background:rgba(11,14,20,.75);color:#fff;font-size:11px;line-height:14px;vertical-align:top}
 .blk .who{display:inline-block;margin-left:4px;width:14px;height:14px;border-radius:50%;background:rgba(11,14,20,.6);color:#fff;font-size:10px;line-height:14px;text-align:center;vertical-align:top}
-.cry{position:absolute;left:0;width:9px;height:3px;border-radius:0 2px 2px 0;background:${C.cry};pointer-events:none}
-.snoo{position:absolute;width:4px;border-radius:2px;background:${C.snoo};opacity:.85;pointer-events:none}
+.cry{position:absolute;left:0;width:22px;height:7px;margin-top:-3px;border-radius:0 3px 3px 0;background:${C.cry};pointer-events:none}
+.snoo{position:absolute;width:10px;border-radius:4px;background:${C.snoo};opacity:.85;pointer-events:none}
 .mk{position:absolute;height:24px;border-radius:12px;display:flex;align-items:center;gap:3px;padding:0 7px 0 4px;font-size:11px;font-weight:700;color:#0b0e14;cursor:pointer;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 0 2px rgba(11,14,20,.55),0 3px 8px rgba(0,0,0,.4);transform:translateY(-50%);border:1px solid rgba(255,255,255,.2);z-index:20}
 .mk ha-icon{--mdc-icon-size:15px}
 .nowl{position:absolute;left:30px;right:0;border-top:2px solid ${C.now};pointer-events:none;z-index:21}
 .nowl:before{content:'';position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:${C.now}}
-.gap{position:absolute;left:34px;z-index:19;border-radius:10px;border:1.5px dashed rgba(77,208,225,.85);background:rgba(77,208,225,.12);color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.gap{position:absolute;left:46px;z-index:19;border-radius:10px;border:1.5px dashed rgba(77,208,225,.85);background:rgba(77,208,225,.12);color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none}
 .wk{display:grid;grid-template-columns:30px repeat(7,1fr);gap:3px;position:relative}
 .wk .h{font-size:11px;text-align:center;color:rgba(255,255,255,.7);padding-bottom:4px;line-height:1.2}
 .wk .h b{display:block;font-size:13px;color:#fff}
@@ -712,7 +712,7 @@ ${e.live ? '' : '<div class="slide" id="sl"><div class="fill"></div><div class="
     }
     _strip(list, a, isToday) {
       const hp = this._c.hour_px, H24 = 24 * hp, b = a + 86400;
-      const W = this.clientWidth || 360, axis = 34, mainW = W - axis - 4;
+      const W = this.clientWidth || 360, axis = 46, mainW = W - axis - 4;
       const y = (t) => ((Math.max(a, Math.min(b, t)) - a) / 3600) * hp;
       let h = `<div class="strip swipe no-swipe" data-strip="1" style="height:${H24 + 8}px">`;
       for (let i = 0; i <= 24; i++) {
@@ -760,10 +760,10 @@ ${e.live ? '' : '<div class="slide" id="sl"><div class="fill"></div><div class="
         if (sc && sc.score != null && ht >= 40 && w > 110) inner += `<span class="sc">${sc.score}</span>`;
         if (who && ht >= 40) inner += `<span class="who">${esc(who[0])}</span>`;
         if (sc) for (const c of sc.cries) { if (c[0] >= e.ts && c[0] <= e.ts + e.duration) inner += `<div class="cry" style="top:${y(c[0]) - top}px"></div>`; }
-        h += `<div class="blk ${e.live ? 'live' : ''} ${lv ? 'over' : ''}" data-id="${esc(e.id)}" style="top:${top}px;height:${ht}px;left:${left}px;width:${w}px;z-index:${lv + 1};${pad && ht >= pad + 20 ? `padding-top:${pad + 3}px;` : ''}background:${color(e)}">${inner}</div>`;
+        h += `<div class="blk ${e.live ? 'live' : ''} ${lv ? 'over' : ''}" data-id="${esc(e.id)}" style="top:${top}px;height:${ht}px;left:${left}px;width:${w}px;z-index:${lv + 1};${base(e.kind) === 'sleep' ? 'padding-left:28px;' : ''}${pad && ht >= pad + 20 ? `padding-top:${pad + 3}px;` : ''}background:${color(e)}">${inner}</div>`;
         if (x && base(e.kind) === 'sleep') for (const r of x.runs || []) {
           const s = Math.max(r[0], e.ts), en = Math.min(r[1], e.ts + e.duration);
-          if (en - s > 60) h += `<div class="snoo" style="top:${y(s)}px;height:${Math.max(4, y(en) - y(s))}px;left:${left - 6}px"></div>`;
+          if (en - s > 60) h += `<div class="snoo" style="top:${y(s)}px;height:${Math.max(4, y(en) - y(s))}px;left:${left - 12}px"></div>`;
         }
       }
       if (this._gap) h += `<div class="gap" style="top:${y(this._gap.a)}px;height:${Math.max(18, y(this._gap.b) - y(this._gap.a))}px;width:${mainW}px">Add sleep?</div>`;

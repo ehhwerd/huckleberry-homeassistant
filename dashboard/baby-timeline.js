@@ -114,19 +114,40 @@
   window._bhRun = runSvc;
 
   // ------------------------------------------------------------ data store (shared by all cards)
-  const store = window._bhStore || (window._bhStore = { days: {}, listeners: new Set(), pending: null, sig: '' });
+  // Days show from this phone's saved copy at once, then refresh quietly: `days` is what's drawn,
+  // `fresh` says a day has been checked with Huckleberry since the page opened.
+  const LS = 'bh_cache_v1';
+  const store = window._bhStore || (window._bhStore = { days: {}, fresh: {}, loading: {}, gen: {}, listeners: new Set(), sig: '' });
   store.emit = () => store.listeners.forEach((f) => f());
-  store.drop = (keys) => { (keys || Object.keys(store.days)).forEach((k) => delete store.days[k]); store.emit(); };
-  store.ensure = async (from, to) => {
-    // from/to: Date (start of day), inclusive. One list call for the missing span.
-    const miss = [];
-    for (let d = sod(from); d <= to; d = addD(d, 1)) if (!store.days[dayKey(d)]) miss.push(new Date(d));
-    if (!miss.length) return;
-    const a = miss[0], b = addD(miss[miss.length - 1], 1);
-    const key = a.toISOString() + b.toISOString();
-    if (store.inflight && store.inflight[key]) return store.inflight[key];
-    store.inflight = store.inflight || {};
+  store.drop = (keys) => {
+    (keys || Object.keys(store.days)).forEach((k) => { delete store.fresh[k]; delete store.loading[k]; store.gen[k] = (store.gen[k] || 0) + 1; });
+    store.emit();
+  };
+  store.forget = (e) => { const k = dayKey(new Date(e.ts * 1000)); if (store.days[k]) store.days[k] = store.days[k].filter((x) => x.id !== e.id); };
+  store.save = () => {
+    clearTimeout(store.st);
+    store.st = setTimeout(() => {
+      try {
+        const cut = dayKey(addD(new Date(), -35)), days = {}, scores = {};
+        Object.keys(store.days).filter((k) => k >= cut).forEach((k) => (days[k] = store.days[k]));
+        Object.keys(extra.scores).filter((k) => extra.scores[k].scores).slice(-20).forEach((k) => (scores[k] = extra.scores[k]));
+        localStorage.setItem(LS, JSON.stringify({ days, scores }));
+      } catch (err) { /* private window or full: the page still works from memory */ }
+    }, 500);
+  };
+  store.ensure = (from, to) => {
+    // from/to: Date (start of day), inclusive. One list call for the days not checked yet.
+    if (Date.now() < (store.retry || 0)) return Promise.resolve();
+    const miss = [], wait = new Set();
+    for (let d = sod(from); d <= to; d = addD(d, 1)) {
+      const k = dayKey(d);
+      if (store.fresh[k]) continue;
+      if (store.loading[k]) wait.add(store.loading[k]); else miss.push(new Date(d));
+    }
+    if (!miss.length) return Promise.all(wait);
+    const a = miss[0], b = addD(miss[miss.length - 1], 1), gen = {};
     const p = (async () => {
+      let changed = false;
       try {
         const res = await runSvc('list_entries', { start: a.toISOString(), end: b.toISOString() });
         const by = {};
@@ -135,17 +156,24 @@
           const k = dayKey(new Date(e.ts * 1000));
           if (by[k]) by[k].push(e);
         }
-        Object.assign(store.days, by);
-        store.err = null;
+        for (const k of Object.keys(by)) {
+          if ((store.gen[k] || 0) !== gen[k]) continue; // dropped while loading: a newer call has it
+          if (JSON.stringify(store.days[k]) !== JSON.stringify(by[k])) { store.days[k] = by[k]; changed = true; }
+          store.fresh[k] = true;
+        }
+        if (store.err) changed = true;
+        store.err = null; store.retry = 0;
       } catch (err) {
         store.err = String(err && err.message || err);
+        store.retry = Date.now() + 30000;
+        changed = true;
       } finally {
-        delete store.inflight[key];
-        store.emit();
+        Object.keys(gen).forEach((k) => { if (store.loading[k] === p) delete store.loading[k]; });
       }
+      if (changed) { store.save(); store.emit(); } // no redraw if nothing changed, so a tap isn't lost
     })();
-    store.inflight[key] = p;
-    return p;
+    miss.forEach((d) => { const k = dayKey(d); gen[k] = store.gen[k] || 0; store.loading[k] = p; });
+    return Promise.all([p, ...wait]);
   };
   store.between = (a, b) => {
     // entries overlapping [a, b)
@@ -202,12 +230,22 @@
       const people = {};
       for (const [id, s] of Object.entries(hass.states)) if (id.startsWith('person.') && s.attributes.user_id) people[s.attributes.user_id] = s.attributes.friendly_name;
       const who = (lb || []).filter((x) => x.context_user_id).map((x) => ({ t: x.when, name: people[x.context_user_id] || 'Someone' }));
+      const same = old && old.scores && JSON.stringify([old.scores, old.runs, old.who]) === JSON.stringify([scores, runs, who]);
       extra.scores[k] = { scores, runs, who, t: Date.now() };
+      if (same) return;
     } catch (err) {
       extra.scores[k] = { scores: [], runs: [], who: [], t: Date.now() };
     }
+    store.save();
     store.emit();
   };
+  try {
+    const c = JSON.parse(localStorage.getItem(LS) || 'null');
+    if (c && !Object.keys(store.days).length) {
+      Object.assign(store.days, c.days);
+      Object.entries(c.scores || {}).forEach(([k, v]) => (extra.scores[k] = Object.assign(v, { t: 0, pending: false })));
+    }
+  } catch (err) { /* no saved copy: load as normal */ }
   extra.get = (a, b) => { const x = extra.scores[dayKey(a) + dayKey(b)]; return x && x.scores ? x : null; };
   extra.whoFor = (e, x) => {
     if (!x || !e.logged_at) return null;
@@ -406,6 +444,7 @@ ${e.live ? '' : '<div class="slide" id="sl"><div class="fill"></div><div class="
       try {
         const r = await runSvc('delete_entry', { tracker: e.tracker, id: e.id, revision: e.revision });
         this.close();
+        store.forget(e);
         store.drop([dayKey(new Date(e.ts * 1000))]);
         toast('Deleted', 'Undo', async () => {
           try { await runSvc('restore_entry', { backup: r.backup }); store.drop([dayKey(new Date(e.ts * 1000))]); toast('Put back', null, null, 3000); }
@@ -922,4 +961,25 @@ ${e.live ? '' : '<div class="slide" id="sl"><div class="fill"></div><div class="
 
   window.customCards = window.customCards || [];
   window.customCards.push({ type: 'baby-timeline-card', name: 'Baby timeline', description: 'Huckleberry history: Day / Week / List / Summary (' + V + ')' });
+
+  // Refresh as soon as the Baby page opens, not when the History tab is first tapped.
+  const onBaby = () => location.pathname.startsWith('/baby-page');
+  const boot = () => {
+    if (!onBaby() || !H()) return false;
+    const t = sod(new Date());
+    store.ensure(addD(t, -8), t);
+    extra.load(t, addD(t, 1));
+    return true;
+  };
+  let tries = 0;
+  const first = () => { if (!boot() && onBaby() && tries++ < 50) setTimeout(first, 200); };
+  first();
+  window.addEventListener('location-changed', boot);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { store.hid = Date.now(); return; }
+    if (!store.hid || Date.now() - store.hid < 60000 || !onBaby()) return;
+    const t = sod(new Date());
+    store.drop([dayKey(t), dayKey(addD(t, -1))]);
+    boot();
+  });
 })();

@@ -285,7 +285,7 @@ button:active,.tap:active{transform:scale(.96)}
 .blk.over{box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 0 2px rgba(11,14,20,.55),0 3px 8px rgba(0,0,0,.4)}
 .blk .sc{display:inline-block;margin-left:6px;padding:0 6px;border-radius:10px;background:rgba(11,14,20,.75);color:#fff;font-size:11px;line-height:14px;vertical-align:top}
 .blk .who{display:inline-block;margin-left:4px;width:14px;height:14px;border-radius:50%;background:rgba(11,14,20,.6);color:#fff;font-size:10px;line-height:14px;text-align:center;vertical-align:top}
-.cry{position:absolute;left:0;width:22px;height:7px;margin-top:-3px;border-radius:0 3px 3px 0;background:${C.cry};pointer-events:none}
+.cry{position:absolute;left:0;width:22px;height:7px;border-radius:0 3px 3px 0;background:${C.cry};pointer-events:none}
 .snoo{position:absolute;width:10px;border-radius:4px;background:${C.snoo};opacity:.85;pointer-events:none}
 .mk{position:absolute;height:24px;border-radius:12px;display:flex;align-items:center;gap:3px;padding:0 7px 0 4px;font-size:11px;font-weight:700;color:#0b0e14;cursor:pointer;white-space:nowrap;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 0 2px rgba(11,14,20,.55),0 3px 8px rgba(0,0,0,.4);transform:translateY(-50%);border:1px solid rgba(255,255,255,.2);z-index:20}
 .mk ha-icon{--mdc-icon-size:15px}
@@ -759,7 +759,7 @@ ${e.live ? '' : '<div class="slide" id="sl"><div class="fill"></div><div class="
         let inner = ht >= 18 ? esc(shortLabel(e)) : '';
         if (sc && sc.score != null && ht >= 40 && w > 110) inner += `<span class="sc">${sc.score}</span>`;
         if (who && ht >= 40) inner += `<span class="who">${esc(who[0])}</span>`;
-        if (sc) for (const c of sc.cries) { if (c[0] >= e.ts && c[0] <= e.ts + e.duration) inner += `<div class="cry" style="top:${y(c[0]) - top}px"></div>`; }
+        if (sc) for (const c of sc.cries) { if (c[0] >= e.ts && c[0] <= e.ts + e.duration) inner += `<div class="cry" style="top:${Math.max(1, Math.min(ht - 10, y(c[0]) - top - 3))}px"></div>`; }
         h += `<div class="blk ${e.live ? 'live' : ''} ${lv ? 'over' : ''}" data-id="${esc(e.id)}" style="top:${top}px;height:${ht}px;left:${left}px;width:${w}px;z-index:${lv + 1};${base(e.kind) === 'sleep' ? 'padding-left:28px;' : ''}${pad && ht >= pad + 20 ? `padding-top:${pad + 3}px;` : ''}background:${color(e)}">${inner}</div>`;
         if (x && base(e.kind) === 'sleep') for (const r of x.runs || []) {
           const s = Math.max(r[0], e.ts), en = Math.min(r[1], e.ts + e.duration);
